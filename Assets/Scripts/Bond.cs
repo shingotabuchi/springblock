@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,8 +8,11 @@ public class Bond
     // Natural Length
     public static float L = 1;
     // Hook constant
+    public static float criticalBreakForce = 10f;
     public static float K = 1;
-    List<Node> nodes = new List<Node>();
+    public List<Node> nodes = new List<Node>();
+    public BondLineRenderer renderer;
+    public float strain = 0;
 
     public Node GetConnnectedNode(Node node)
     {
@@ -22,5 +26,19 @@ public class Bond
         nodes.Add(node1);
         node0.bonds.Add(this);
         node1.bonds.Add(this);
+    }
+    public void Update()
+    {
+        if (strain > criticalBreakForce)
+        {
+            UnityEngine.Object.Destroy(renderer.gameObject);
+            foreach (var item in nodes)
+            {
+                item.bonds.Remove(this);
+            }
+        }
+
+        renderer.text.text = strain.ToString("0.00");
+        strain = 0;
     }
 }
