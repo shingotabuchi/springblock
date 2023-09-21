@@ -23,11 +23,11 @@ public class SpringModelMain : MonoBehaviour
     public int columnCount;
     public int nodeInterval;
     public int loopCount;
-    public float D;
+    public float D, L, K;
     Texture2D plotTexture;
     RenderTexture renderTexture;
     ComputeBuffer nodes;
-    int Init, Plot, RandomMovement, Erase;
+    int Init, Plot, RandomMovement, Erase, StepTmp, Step;
     public ComputeShader compute;
     int[] threadsPlot;
     int[] threadsNodes;
@@ -39,6 +39,8 @@ public class SpringModelMain : MonoBehaviour
     private void OnValidate()
     {
         compute.SetFloat("D", D);
+        compute.SetFloat("L", L);
+        compute.SetFloat("K", K);
     }
     void Start()
     {
@@ -86,6 +88,12 @@ public class SpringModelMain : MonoBehaviour
         RandomMovement = compute.FindKernel("RandomMovement");
         compute.SetBuffer(RandomMovement, "nodes", nodes);
 
+        StepTmp = compute.FindKernel("StepTmp");
+        compute.SetBuffer(StepTmp, "nodes", nodes);
+
+        Step = compute.FindKernel("Step");
+        compute.SetBuffer(Step, "nodes", nodes);
+
         compute.Dispatch(Init, threadsNodes[0], threadsNodes[1], threadsNodes[2]);
         compute.Dispatch(Plot, threadsNodes[0], threadsNodes[1], threadsNodes[2]);
         RenderTexture.active = renderTexture;
@@ -102,8 +110,10 @@ public class SpringModelMain : MonoBehaviour
     {
         for (int i = 0; i < loopCount; i++)
         {
-            compute.SetInt("offset", (int)Random.Range(0, int.MaxValue));
-            compute.Dispatch(RandomMovement, threadsNodes[0], threadsNodes[1], threadsNodes[2]);
+            // compute.SetInt("offset", (int)Random.Range(0, int.MaxValue));
+            // compute.Dispatch(RandomMovement, threadsNodes[0], threadsNodes[1], threadsNodes[2]);
+            compute.Dispatch(StepTmp, threadsNodes[0], threadsNodes[1], threadsNodes[2]);
+            compute.Dispatch(Step, threadsNodes[0], threadsNodes[1], threadsNodes[2]);
         }
         compute.Dispatch(Erase, threadsPlot[0], threadsPlot[1], threadsPlot[2]);
         compute.Dispatch(Plot, threadsNodes[0], threadsNodes[1], threadsNodes[2]);

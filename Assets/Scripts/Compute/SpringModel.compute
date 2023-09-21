@@ -2,6 +2,8 @@
 #pragma kernel Plot
 #pragma kernel Erase
 #pragma kernel RandomMovement
+#pragma kernel StepTmp
+#pragma kernel Step
 
 struct Node
 {
@@ -16,13 +18,33 @@ struct Node
 };
 RWStructuredBuffer<Node> nodes;
 RWTexture2D<float4> renderTexture;
-float D;
+float D,L,K;
 uint DIM_X;
 uint DIM_Y;
 uint rowCount;
 uint columnCount;
 uint nodeInterval;
 uint offset;
+
+float2 ForceFromBond(float2 pos,int bondNodeIndex)
+{
+    if(bondNodeIndex < 0) return float2(0,0);
+    float2 vec = nodes[bondNodeIndex].position - pos;
+    float dist = length(vec);
+    float2 direction = vec/dist;
+    return K * (dist - L) * direction;
+}
+
+float2 Force(uint nodeIndex,float2 tmpPos,float2 tmpVel)
+{
+    float2 force = float2(0,0);
+    Node node = nodes[nodeIndex];
+    force += ForceFromBond(tmpPos,node.bond0);
+    force += ForceFromBond(tmpPos,node.bond1);
+    force += ForceFromBond(tmpPos,node.bond2);
+    force += ForceFromBond(tmpPos,node.bond3);
+    return force - D*tmpVel;
+}
 
 uint Hash(uint s)
 {
@@ -45,14 +67,25 @@ void Init(uint3 id : SV_DispatchThreadID)
 {
     if(id.x >= columnCount || id.y >= rowCount) return;
     uint index = id.x + id.y*columnCount;
-    nodes[index].bond0 = -1;
-    nodes[index].bond1 = -1;
-    nodes[index].bond2 = -1;
-    nodes[index].bond3 = -1;
+    uint nodeCount = columnCount * rowCount;
+    uint nearNodeIndex;
+    nearNodeIndex = index + 1;
+    if(nearNodeIndex < nodeCount) nodes[index].bond0 = nearNodeIndex;
+    else nodes[index].bond0 = -1;
 
-    // nodes[index].position = float2(id.x,id.y) * nodeInterval + float2((DIM_X - nodeInterval * (columnCount-1))/2,(DIM_Y-nodeInterval * (rowCount-1))/2);
+    nearNodeIndex = index - 1;
+    if(nearNodeIndex < nodeCount) nodes[index].bond1 = nearNodeIndex;
+    else nodes[index].bond1 = -1;
+
+    nearNodeIndex = index + columnCount;
+    if(nearNodeIndex < nodeCount) nodes[index].bond2 = nearNodeIndex;
+    else nodes[index].bond2 = -1;
+
+    nearNodeIndex = index - columnCount;
+    if(nearNodeIndex < nodeCount) nodes[index].bond3 = nearNodeIndex;
+    else nodes[index].bond3 = -1;
+
     nodes[index].position = float2(id.x,id.y) * nodeInterval + float2(uint((DIM_X - nodeInterval * (columnCount-1))/2),uint((DIM_Y-nodeInterval * (rowCount-1))/2));
-    // nodes[index].position = float2(id.x,id.y)* nodeInterval;
     nodes[index].velocity = float2(0,0);
 }
 
@@ -73,6 +106,40 @@ void Plot(uint3 id : SV_DispatchThreadID)
     float dimy = float(DIM_Y);
     if(x < 0 || x >= dimx || y < 0 || y >= dimy) return;
     renderTexture[uint2(x,y)] = float4(1,1,1,1);
+}
+
+[numthreads(16, 16, 1)]
+void StepTmp(uint3 id : SV_DispatchThreadID)
+{
+    if(id.x >= columnCount || id.y >= rowCount) return;
+    uint index = id.x + id.y*columnCount;
+    float dt = 0.02;
+    float2 vel = nodes[index].velocity;
+    float2 pos = nodes[index].position;
+    float2 force = Force(index,pos,vel);
+    float2 k1v = force * dt;
+    float2 k1x = vel * dt;
+
+    float2 k2v = Force(index,pos + k1x / 2.0,vel + k1v / 2.0) * dt;
+    float2 k2x = (vel + k1v / 2.0) * dt;
+
+    float2 k3v = Force(index,pos + k2x / 2.0,vel + k2v / 2.0) * dt;
+    float2 k3x = (vel + k2v / 2.0) * dt;
+
+    float2 k4v = Force(index,pos + k3x,vel + k3v) * dt;
+    float2 k4x = (vel + k3v) * dt;
+
+    nodes[index].velocityTmp = vel + (k1v + 2.0 * k2v + 2.0 * k3v + k4v) / 6.0;
+    nodes[index].positionTmp = pos + (k1x + 2.0 * k2x + 2.0 * k3x + k4x) / 6.0;
+}
+
+[numthreads(16, 16, 1)]
+void Step(uint3 id : SV_DispatchThreadID)
+{
+    if(id.x >= columnCount || id.y >= rowCount) return;
+    uint index = id.x + id.y*columnCount;
+    nodes[index].velocity = nodes[index].velocityTmp;
+    nodes[index].position = nodes[index].positionTmp;
 }
 
 [numthreads(16, 16, 1)]
