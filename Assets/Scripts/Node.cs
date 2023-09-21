@@ -17,7 +17,7 @@ public class Node
     public Vector2 velocityTmp;
     public List<Bond> bonds = new List<Bond>();
     public bool stick = false;
-    public Vector2 Force(Vector2 tempPos, bool breakOrSlip = false)
+    public Vector2 Force(Vector2 tempPos, Vector2 tempVel, bool breakOrSlip = false)
     {
         Vector2 force = Vector2.zero;
         foreach (var item in bonds)
@@ -40,11 +40,10 @@ public class Node
             stick = true;
         }
         else stick = false;
-        return force - dampConst * velocity;
+        return force - dampConst * tempVel;
     }
     public void UpdateTmp()
     {
-        Vector2 force = Force(position, true);
         if (constrain || stick)
         {
             velocityTmp = Vector2.zero;
@@ -52,16 +51,17 @@ public class Node
             return;
         }
         Vector2 vel = velocity;
+        Vector2 force = Force(position, vel, true);
         Vector2 k1v = force * dt;
         Vector2 k1x = vel * dt;
 
-        Vector2 k2v = Force(position + k1x / 2f) * dt;
+        Vector2 k2v = Force(position + k1x / 2f, vel + k1v / 2f) * dt;
         Vector2 k2x = (vel + k1v / 2f) * dt;
 
-        Vector2 k3v = Force(position + k2x / 2f) * dt;
+        Vector2 k3v = Force(position + k2x / 2f, vel + k2v / 2f) * dt;
         Vector2 k3x = (vel + k2v / 2f) * dt;
 
-        Vector2 k4v = Force(position + k3x) * dt;
+        Vector2 k4v = Force(position + k3x, vel + k3v) * dt;
         Vector2 k4x = (vel + k3v) * dt;
 
         velocityTmp = vel + (k1v + 2f * k2v + 2f * k3v + k4v) / 6f;

@@ -24,7 +24,7 @@ public class Main : MonoBehaviour
     private void Start()
     {
         Vector3 startPos = width / 2 * new Vector3(-1, -1, 0);
-
+        OnValidate();
         // int j = 0;
         // for (int i = 0; i < width; i++)
         // {
