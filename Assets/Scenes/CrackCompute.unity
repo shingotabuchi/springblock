@@ -269,11 +269,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   plotImage: {fileID: 1018932641}
-  DIM_X: 256
-  DIM_Y: 256
-  rowCount: 10
-  columnCount: 10
-  nodeInterval: 10
+  DIM_X: 1024
+  DIM_Y: 1024
+  rowCount: 1024
+  columnCount: 1024
+  nodeInterval: 1
   loopCount: 0
   D: 0
   compute: {fileID: 7200000, guid: 3763c457856f1524ca557dae5c64fd6c, type: 3}

@@ -65,8 +65,8 @@ void Erase(uint3 id : SV_DispatchThreadID)
 [numthreads(16, 16, 1)]
 void Plot(uint3 id : SV_DispatchThreadID)
 {
+    if(id.x >= columnCount || id.y >= rowCount) return;
     uint index = id.x + id.y*columnCount;
-    if(index >= columnCount*rowCount)return;
     float x = nodes[index].position.x;
     float y = nodes[index].position.y;
     float dimx = float(DIM_X);
@@ -78,6 +78,7 @@ void Plot(uint3 id : SV_DispatchThreadID)
 [numthreads(16, 16, 1)]
 void RandomMovement(uint3 id : SV_DispatchThreadID)
 {
+    if(id.x >= columnCount || id.y >= rowCount) return;
     float pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164;
     uint index = id.x + id.y*columnCount;
     float rng = Random(index*offset + offset);
