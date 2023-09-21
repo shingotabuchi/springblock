@@ -1,0 +1,89 @@
+#pragma kernel Init
+#pragma kernel Plot
+#pragma kernel Erase
+#pragma kernel RandomMovement
+
+struct Node
+{
+    int bond0;
+    int bond1;
+    int bond2;
+    int bond3;
+    float2 position;
+    float2 positionTmp;
+    float2 velocity;
+    float2 velocityTmp;
+};
+RWStructuredBuffer<Node> nodes;
+RWTexture2D<float4> renderTexture;
+float D;
+uint DIM_X;
+uint DIM_Y;
+uint rowCount;
+uint columnCount;
+uint nodeInterval;
+uint offset;
+
+uint Hash(uint s)
+{
+    s ^= 2747636419u;
+    s *= 2654435769u;
+    s ^= s >> 16;
+    s *= 2654435769u;
+    s ^= s >> 16;
+    s *= 2654435769u;
+    return s;
+}
+
+float Random(uint seed)
+{
+    return float(Hash(seed)) / 4294967295.0; // 2^32-1
+}
+
+[numthreads(16, 16, 1)]
+void Init(uint3 id : SV_DispatchThreadID)
+{
+    if(id.x >= columnCount || id.y >= rowCount) return;
+    uint index = id.x + id.y*columnCount;
+    nodes[index].bond0 = -1;
+    nodes[index].bond1 = -1;
+    nodes[index].bond2 = -1;
+    nodes[index].bond3 = -1;
+
+    // nodes[index].position = float2(id.x,id.y) * nodeInterval + float2((DIM_X - nodeInterval * (columnCount-1))/2,(DIM_Y-nodeInterval * (rowCount-1))/2);
+    nodes[index].position = float2(id.x,id.y) * nodeInterval + float2(uint((DIM_X - nodeInterval * (columnCount-1))/2),uint((DIM_Y-nodeInterval * (rowCount-1))/2));
+    // nodes[index].position = float2(id.x,id.y)* nodeInterval;
+    nodes[index].velocity = float2(0,0);
+}
+
+[numthreads(16, 16, 1)]
+void Erase(uint3 id : SV_DispatchThreadID)
+{
+    renderTexture[id.xy] = float4(0,0,0,1);
+}
+
+[numthreads(16, 16, 1)]
+void Plot(uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.x + id.y*columnCount;
+    if(index >= columnCount*rowCount)return;
+    float x = nodes[index].position.x;
+    float y = nodes[index].position.y;
+    float dimx = float(DIM_X);
+    float dimy = float(DIM_Y);
+    if(x < 0 || x >= dimx || y < 0 || y >= dimy) return;
+    renderTexture[uint2(x,y)] = float4(1,1,1,1);
+}
+
+[numthreads(16, 16, 1)]
+void RandomMovement(uint3 id : SV_DispatchThreadID)
+{
+    float pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164;
+    uint index = id.x + id.y*columnCount;
+    float rng = Random(index*offset + offset);
+    float theta = 2.0 * pi * rng;
+    float cs = cos(theta);
+    float sn = sin(theta);
+    nodes[index].velocity += 0.5 * float2(cs,sn) * 0.02 - D * nodes[index].velocity;
+    nodes[index].position += nodes[index].velocity * 0.02;
+}
