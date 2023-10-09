@@ -70,7 +70,7 @@ public class Main : MonoBehaviour
         bonds.Add(newBond);
     }
 
-    private void Update()
+    private void FixedUpdate()
     {
         foreach (var item in nodes)
         {

@@ -44,14 +44,14 @@ public class Node
     }
     public void UpdateTmp()
     {
+        Vector2 vel = velocity;
+        Vector2 force = Force(position, vel, true);
         if (constrain || stick)
         {
             velocityTmp = Vector2.zero;
             positionTmp = position;
             return;
         }
-        Vector2 vel = velocity;
-        Vector2 force = Force(position, vel, true);
         Vector2 k1v = force * dt;
         Vector2 k1x = vel * dt;
 

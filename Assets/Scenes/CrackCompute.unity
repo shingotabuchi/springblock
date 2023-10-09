@@ -269,15 +269,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   plotImage: {fileID: 1018932641}
-  DIM_X: 32
-  DIM_Y: 32
-  rowCount: 6
-  columnCount: 6
-  nodeInterval: 2
-  loopCount: 0
+  DIM_X: 512
+  DIM_Y: 512
+  rowCount: 512
+  columnCount: 512
+  nodeInterval: 1
+  loopCount: 1
   D: 1
-  L: 1
+  L: 0.5
   K: 10
+  bondCrit: 8
+  slipCrit: 2
   compute: {fileID: 7200000, guid: 3763c457856f1524ca557dae5c64fd6c, type: 3}
 --- !u!1 &1018932639
 GameObject:

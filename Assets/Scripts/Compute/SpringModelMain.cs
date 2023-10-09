@@ -5,9 +5,14 @@ using UnityEngine.UI;
 using System.Runtime.InteropServices;
 public struct ComputeNode
 {
+    public bool fix;
+    public bool breakbond0;
     public int bond0;
+    public bool breakbond1;
     public int bond1;
+    public bool breakbond2;
     public int bond2;
+    public bool breakbond3;
     public int bond3;
     public Vector2 position;
     public Vector2 positionTmp;
@@ -24,10 +29,12 @@ public class SpringModelMain : MonoBehaviour
     public int nodeInterval;
     public int loopCount;
     public float D, L, K;
+    public float bondCrit;
+    public float slipCrit;
     Texture2D plotTexture;
     RenderTexture renderTexture;
     ComputeBuffer nodes;
-    int Init, Plot, RandomMovement, Erase, StepTmp, Step;
+    int Init, Plot, RandomMovement, Erase, StepTmp, Step, BreakBonds;
     public ComputeShader compute;
     int[] threadsPlot;
     int[] threadsNodes;
@@ -41,6 +48,8 @@ public class SpringModelMain : MonoBehaviour
         compute.SetFloat("D", D);
         compute.SetFloat("L", L);
         compute.SetFloat("K", K);
+        compute.SetFloat("bondCrit", bondCrit);
+        compute.SetFloat("slipCrit", slipCrit);
     }
     void Start()
     {
@@ -94,6 +103,9 @@ public class SpringModelMain : MonoBehaviour
         Step = compute.FindKernel("Step");
         compute.SetBuffer(Step, "nodes", nodes);
 
+        BreakBonds = compute.FindKernel("BreakBonds");
+        compute.SetBuffer(BreakBonds, "nodes", nodes);
+
         compute.Dispatch(Init, threadsNodes[0], threadsNodes[1], threadsNodes[2]);
         compute.Dispatch(Plot, threadsNodes[0], threadsNodes[1], threadsNodes[2]);
         RenderTexture.active = renderTexture;
@@ -114,6 +126,7 @@ public class SpringModelMain : MonoBehaviour
             // compute.Dispatch(RandomMovement, threadsNodes[0], threadsNodes[1], threadsNodes[2]);
             compute.Dispatch(StepTmp, threadsNodes[0], threadsNodes[1], threadsNodes[2]);
             compute.Dispatch(Step, threadsNodes[0], threadsNodes[1], threadsNodes[2]);
+            compute.Dispatch(BreakBonds, threadsNodes[0], threadsNodes[1], threadsNodes[2]);
         }
         compute.Dispatch(Erase, threadsPlot[0], threadsPlot[1], threadsPlot[2]);
         compute.Dispatch(Plot, threadsNodes[0], threadsNodes[1], threadsNodes[2]);

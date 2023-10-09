@@ -4,12 +4,18 @@
 #pragma kernel RandomMovement
 #pragma kernel StepTmp
 #pragma kernel Step
+#pragma kernel BreakBonds
 
 struct Node
 {
+    bool fix;
+    bool breakbond0;
     int bond0;
+    bool breakbond1;
     int bond1;
+    bool breakbond2;
     int bond2;
+    bool breakbond3;
     int bond3;
     float2 position;
     float2 positionTmp;
@@ -19,6 +25,8 @@ struct Node
 RWStructuredBuffer<Node> nodes;
 RWTexture2D<float4> renderTexture;
 float D,L,K;
+float bondCrit;
+float slipCrit;
 uint DIM_X;
 uint DIM_Y;
 uint rowCount;
@@ -45,6 +53,21 @@ float2 Force(uint nodeIndex,float2 tmpPos,float2 tmpVel)
     force += ForceFromBond(tmpPos,node.bond3);
     return force - D*tmpVel;
 }
+void MarkBondsToBreak(uint nodeIndex)
+{
+    float2 pos = nodes[nodeIndex].position;
+    if(length(ForceFromBond(pos,nodes[nodeIndex].bond0)) > bondCrit) nodes[nodeIndex].breakbond0 = true;
+    else nodes[nodeIndex].breakbond0 = false;
+
+    if(length(ForceFromBond(pos,nodes[nodeIndex].bond1)) > bondCrit) nodes[nodeIndex].breakbond1 = true;
+    else nodes[nodeIndex].breakbond1 = false;
+
+    if(length(ForceFromBond(pos,nodes[nodeIndex].bond2)) > bondCrit) nodes[nodeIndex].breakbond2 = true;
+    else nodes[nodeIndex].breakbond2 = false;
+
+    if(length(ForceFromBond(pos,nodes[nodeIndex].bond3)) > bondCrit) nodes[nodeIndex].breakbond3 = true;
+    else nodes[nodeIndex].breakbond3 = false;
+}
 
 uint Hash(uint s)
 {
@@ -70,23 +93,28 @@ void Init(uint3 id : SV_DispatchThreadID)
     uint nodeCount = columnCount * rowCount;
     uint nearNodeIndex;
     nearNodeIndex = index + 1;
-    if(nearNodeIndex < nodeCount) nodes[index].bond0 = nearNodeIndex;
+    if(id.x + 1 < columnCount) nodes[index].bond0 = nearNodeIndex;
     else nodes[index].bond0 = -1;
 
     nearNodeIndex = index - 1;
-    if(nearNodeIndex < nodeCount) nodes[index].bond1 = nearNodeIndex;
+    if(id.x >= 1) nodes[index].bond1 = nearNodeIndex;
     else nodes[index].bond1 = -1;
 
     nearNodeIndex = index + columnCount;
-    if(nearNodeIndex < nodeCount) nodes[index].bond2 = nearNodeIndex;
+    if(id.y + 1 < rowCount) nodes[index].bond2 = nearNodeIndex;
     else nodes[index].bond2 = -1;
 
     nearNodeIndex = index - columnCount;
-    if(nearNodeIndex < nodeCount) nodes[index].bond3 = nearNodeIndex;
+    if(id.y >= 1) nodes[index].bond3 = nearNodeIndex;
     else nodes[index].bond3 = -1;
+
+    if(id.x == (columnCount-1)/2&& id.y == 0) nodes[index].bond0 = -1;
+    if(id.x == (columnCount-1)/2+1&& id.y == 0) nodes[index].bond1 = -1;
 
     nodes[index].position = float2(id.x,id.y) * nodeInterval + float2(uint((DIM_X - nodeInterval * (columnCount-1))/2),uint((DIM_Y-nodeInterval * (rowCount-1))/2));
     nodes[index].velocity = float2(0,0);
+
+    if (id.x == 0 || id.x == columnCount - 1 || id.y == rowCount - 1) nodes[index].fix = true;
 }
 
 [numthreads(16, 16, 1)]
@@ -105,7 +133,17 @@ void Plot(uint3 id : SV_DispatchThreadID)
     float dimx = float(DIM_X);
     float dimy = float(DIM_Y);
     if(x < 0 || x >= dimx || y < 0 || y >= dimy) return;
-    renderTexture[uint2(x,y)] = float4(1,1,1,1);
+    int brokenBondCount = 0;
+    if(nodes[index].bond0 < 0) brokenBondCount++;
+    if(nodes[index].bond1 < 0) brokenBondCount++;
+    if(nodes[index].bond2 < 0) brokenBondCount++;
+    if(nodes[index].bond3 < 0) brokenBondCount++;
+
+    if(brokenBondCount == 0) renderTexture[uint2(x,y)] = float4(1,1,1,1);
+    if(brokenBondCount == 1) renderTexture[uint2(x,y)] = float4(0,0,1,1);
+    if(brokenBondCount == 2) renderTexture[uint2(x,y)] = float4(0,1,0,1);
+    if(brokenBondCount == 3) renderTexture[uint2(x,y)] = float4(1,1,0,1);
+    if(brokenBondCount == 4) renderTexture[uint2(x,y)] = float4(1,0,0,1);
 }
 
 [numthreads(16, 16, 1)]
@@ -113,10 +151,18 @@ void StepTmp(uint3 id : SV_DispatchThreadID)
 {
     if(id.x >= columnCount || id.y >= rowCount) return;
     uint index = id.x + id.y*columnCount;
+    MarkBondsToBreak(index);
     float dt = 0.02;
     float2 vel = nodes[index].velocity;
     float2 pos = nodes[index].position;
     float2 force = Force(index,pos,vel);
+    if (nodes[index].fix || length(force) <= slipCrit)
+    {
+        nodes[index].velocityTmp = float2(0,0);
+        nodes[index].positionTmp = nodes[index].position;
+        return;
+    }
+    
     float2 k1v = force * dt;
     float2 k1x = vel * dt;
 
@@ -140,6 +186,17 @@ void Step(uint3 id : SV_DispatchThreadID)
     uint index = id.x + id.y*columnCount;
     nodes[index].velocity = nodes[index].velocityTmp;
     nodes[index].position = nodes[index].positionTmp;
+}
+
+[numthreads(16, 16, 1)]
+void BreakBonds(uint3 id : SV_DispatchThreadID)
+{
+    if(id.x >= columnCount || id.y >= rowCount) return;
+    uint index = id.x + id.y*columnCount;
+    if(nodes[index].breakbond0) nodes[index].bond0 = -1;
+    if(nodes[index].breakbond1) nodes[index].bond1 = -1;
+    if(nodes[index].breakbond2) nodes[index].bond2 = -1;
+    if(nodes[index].breakbond3) nodes[index].bond3 = -1;
 }
 
 [numthreads(16, 16, 1)]
