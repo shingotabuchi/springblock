@@ -29,7 +29,7 @@ public class Bond
     }
     public void Update()
     {
-        if (strain > criticalBreakForce)
+        if (strain > criticalBreakForce || renderer.debugBool)
         {
             UnityEngine.Object.Destroy(renderer.gameObject);
             foreach (var item in nodes)

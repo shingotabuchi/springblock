@@ -26,7 +26,7 @@ public class CircleCrackMain : MonoBehaviour
 
         for (int r = 0; r < radius; r++)
         {
-            if(r == 0)
+            if (r == 0)
             {
                 Node newNode = new Node();
                 newNode.obj = Instantiate(nodePrefab);
@@ -35,17 +35,31 @@ public class CircleCrackMain : MonoBehaviour
                 newNode.obj.transform.position = position;
                 nodes.Add(newNode);
             }
-            for (int i = 0; i < r*6; i++)
+            for (int i = 0; i < r * 6; i++)
             {
                 Node newNode = new Node();
                 newNode.obj = Instantiate(nodePrefab);
-                float theta = i * Mathf.PI/(3f*r);
-                Vector3 position = new Vector3(Mathf.Cos(theta),Mathf.Sin(theta),0) * r * initialDistance;
+                float theta = i * Mathf.PI / (3f * r);
+                Vector3 position = new Vector3(Mathf.Cos(theta), Mathf.Sin(theta), 0) * r * initialDistance;
                 newNode.position = position;
                 newNode.obj.transform.position = position;
-                if(i != 0) SpawnNewBond(newNode,nodes[nodes.Count - 1]);
-                if(i == r*6-1) SpawnNewBond(newNode,nodes[nodes.Count - r*6+1]);
-                if(r==1) SpawnNewBond(newNode,nodes[0]);
+                if (i != 0) SpawnNewBond(newNode, nodes[nodes.Count - 1]);
+                if (i == r * 6 - 1) SpawnNewBond(newNode, nodes[nodes.Count - r * 6 + 1]);
+                if (r == 1) SpawnNewBond(newNode, nodes[0]);
+
+                if (r > 1)
+                {
+                    int lastFirst = nodes.Count - i - (r - 1) * 6;
+                    int newIndex = i - ((i - 1) / r + 1);
+                    if (i == 0) newIndex = 0;
+                    SpawnNewBond(newNode, nodes[lastFirst + newIndex]);
+                    if (i % r != 0)
+                    {
+                        if (i == r * 6 - 1) SpawnNewBond(newNode, nodes[(lastFirst + newIndex + 1) - (r - 1) * 6]);
+                        else SpawnNewBond(newNode, nodes[(lastFirst + newIndex + 1)]);
+                    }
+                }
+                if (r == radius - 1) newNode.constrain = true;
                 nodes.Add(newNode);
             }
         }
@@ -61,30 +75,30 @@ public class CircleCrackMain : MonoBehaviour
         bonds.Add(newBond);
     }
 
-    // private void Update()
-    // {
-    //     foreach (var item in nodes)
-    //     {
-    //         item.UpdateTmp();
-    //     }
-    //     foreach (var item in nodes)
-    //     {
-    //         item.Update();
-    //     }
-    //     // for (int i = 0; i < bondsToDestroy.Count; i++)
-    //     // {
-    //     //     Bond bond = bondsToDestroy[i];
-    //     //     Destroy(bond.obj);
-    //     //     foreach (var item in bond.nodes)
-    //     //     {
-    //     //         item.bonds.Remove(bond);
-    //     //     }
-    //     //     bond = null;
-    //     // }
-    //     foreach (var item in bonds)
-    //     {
-    //         item.Update();
-    //     }
-    //     // bondsToDestroy.Clear();
-    // }
+    private void Update()
+    {
+        foreach (var item in nodes)
+        {
+            item.UpdateTmp();
+        }
+        foreach (var item in nodes)
+        {
+            item.Update();
+        }
+        // for (int i = 0; i < bondsToDestroy.Count; i++)
+        // {
+        //     Bond bond = bondsToDestroy[i];
+        //     Destroy(bond.obj);
+        //     foreach (var item in bond.nodes)
+        //     {
+        //         item.bonds.Remove(bond);
+        //     }
+        //     bond = null;
+        // }
+        foreach (var item in bonds)
+        {
+            item.Update();
+        }
+        // bondsToDestroy.Clear();
+    }
 }

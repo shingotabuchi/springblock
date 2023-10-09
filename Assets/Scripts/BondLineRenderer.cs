@@ -3,6 +3,7 @@ using TMPro;
 
 public class BondLineRenderer : MonoBehaviour
 {
+    public bool debugBool;
     public LineRenderer lineRenderer;
     public Transform endPoint0;
     public Transform endPoint1;
