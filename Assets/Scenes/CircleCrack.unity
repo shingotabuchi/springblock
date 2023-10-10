@@ -246,11 +246,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   setL: 1
   setK: 10
-  setFcb: 30
-  setFcs: 1
+  setFcb: 39
+  setFcs: 5
   nodePrefab: {fileID: 9101714565389931845, guid: 5f6fd46233dbab84589f0e46dd5430cf, type: 3}
   bondRendererPrefab: {fileID: 1451822435840293193, guid: 8530a84adec68394492d97b9b4eb822c, type: 3}
-  radius: 50
+  radius: 20
   initialDistance: 2
   nodes: []
 --- !u!4 &1712541525

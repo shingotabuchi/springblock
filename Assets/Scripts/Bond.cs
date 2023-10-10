@@ -6,13 +6,14 @@ using UnityEngine;
 public class Bond
 {
     // Natural Length
-    public static float L = 1;
+    public float L = 1;
     // Hook constant
-    public static float criticalBreakForce = 10f;
-    public static float K = 1;
+    public float criticalBreakForce = 10f;
+    public float K = 1;
     public List<Node> nodes = new List<Node>();
     public BondLineRenderer renderer;
     public float strain = 0;
+    public bool destroyed = false;
 
     public Node GetConnnectedNode(Node node)
     {
@@ -20,8 +21,11 @@ public class Bond
         else if (node == nodes[1]) return nodes[0];
         return null;
     }
-    public Bond(Node node0, Node node1)
+    public Bond(Node node0, Node node1, float initL, float initK, float cbf)
     {
+        L = initL;
+        K = initK;
+        criticalBreakForce = cbf;
         nodes.Add(node0);
         nodes.Add(node1);
         node0.bonds.Add(this);
@@ -29,8 +33,10 @@ public class Bond
     }
     public void Update()
     {
+        if (destroyed) return;
         if (strain > criticalBreakForce || renderer.debugBool)
         {
+            destroyed = true;
             UnityEngine.Object.Destroy(renderer.gameObject);
             foreach (var item in nodes)
             {

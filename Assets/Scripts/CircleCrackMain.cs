@@ -3,16 +3,20 @@ using System.Collections.Generic;
 using UnityEngine;
 public class CircleCrackMain : MonoBehaviour
 {
-    public float setL = Bond.L;
-    public float setK = Bond.K;
-    public float setFcb = Bond.criticalBreakForce;
-    public float setFcs = Node.criticalStickForce;
+    public float setL;
+    public float setK;
+    public float setFcb;
+    public float setFcs;
     private void OnValidate()
     {
-        Bond.L = setL;
-        Bond.K = setK;
-        Bond.criticalBreakForce = setFcb;
+        // Bond.L = setL;
+        // Bond.K = setK;
+        // Bond.criticalBreakForce = setFcb;
         Node.criticalStickForce = setFcs;
+        foreach (var item in bonds)
+        {
+            item.criticalBreakForce = setFcb;
+        }
     }
     public GameObject nodePrefab;
     public GameObject bondRendererPrefab;
@@ -67,7 +71,7 @@ public class CircleCrackMain : MonoBehaviour
 
     void SpawnNewBond(Node node0, Node node1)
     {
-        Bond newBond = new Bond(node0, node1);
+        Bond newBond = new Bond(node0, node1, setL, setK, setFcb);
         BondLineRenderer newBondRenderer = Instantiate(bondRendererPrefab).GetComponent<BondLineRenderer>();
         newBondRenderer.endPoint0 = node0.obj.transform;
         newBondRenderer.endPoint1 = node1.obj.transform;

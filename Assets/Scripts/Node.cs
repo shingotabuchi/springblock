@@ -27,7 +27,7 @@ public class Node
             Vector2 vec = otherNode.position - tempPos;
             float dist = vec.magnitude;
             Vector2 direction = vec / dist;
-            Vector2 forceFromBond = Bond.K * (dist - Bond.L) * direction;
+            Vector2 forceFromBond = item.K * (dist - item.L) * direction;
             if (breakOrSlip)
             {
                 float bondStrain = forceFromBond.magnitude;
