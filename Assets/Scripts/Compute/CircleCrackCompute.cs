@@ -34,6 +34,7 @@ public class CircleCrackCompute : MonoBehaviour
     public float D, L, K;
     public float bondCrit;
     public float slipCrit;
+    public float randomOffset;
     Texture2D plotTexture;
     RenderTexture renderTexture;
     ComputeBuffer nodes;
@@ -77,6 +78,7 @@ public class CircleCrackCompute : MonoBehaviour
         compute.SetInt("nodeInterval", nodeInterval);
         compute.SetInt("radius", radius);
         compute.SetInt("nodeCount", nodeCount);
+        compute.SetFloat("randomOffset", randomOffset);
         OnValidate();
 
         nodes = new ComputeBuffer(nodeCount, Marshal.SizeOf(typeof(CircleCrackNode)));

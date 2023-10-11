@@ -514,7 +514,8 @@ MonoBehaviour:
   L: 0.5
   K: 10
   bondCrit: 10
-  slipCrit: 0.2
+  slipCrit: 1
+  randomOffset: 0
   compute: {fileID: 7200000, guid: 486bbe7b5687540408c2192851096258, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

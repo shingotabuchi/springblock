@@ -31,6 +31,7 @@ RWTexture2D<float4> renderTexture;
 float D,L,K;
 float bondCrit;
 float slipCrit;
+float randomOffset;
 uint DIM_X;
 uint DIM_Y;
 uint nodeCount;
@@ -44,6 +45,11 @@ float2 ForceFromBond(float2 pos,int bondNodeIndex)
     float2 vec = nodes[bondNodeIndex].position - pos;
     float dist = length(vec);
     float2 direction = vec/dist;
+    // float2 bondPos = (nodes[bondNodeIndex].position + pos)/2.0;
+    // float2 directionToCenter = float2(DIM_X/2.0,DIM_Y/2.0) - bondPos;
+    // directionToCenter = directionToCenter/length(directionToCenter);
+    // float absDotProduct = abs(directionToCenter.x * direction.x + directionToCenter.y * direction.y);
+    // return (1.0 - absDotProduct) * K * (dist - L) * direction;
     return K * (dist - L) * direction;
 }
 
@@ -160,6 +166,13 @@ void Init(uint3 id : SV_DispatchThreadID)
                 else nodes[lastFirst + newIndex].bond4 = index;
             }
             if (r == radius - 1) nodes[index].fix = true;
+            else
+            {
+                float rndTheta = 2.0 * pi * Random(index);
+                float rndDist = randomOffset*Random(index + 1);
+                nodes[index].position += rndDist * float2(cos(rndTheta),sin(rndTheta));
+            }
+
             index++;
         }
     }
@@ -196,6 +209,8 @@ void Plot(uint3 id : SV_DispatchThreadID)
     if(brokenBondCount == 4) renderTexture[uint2(x,y)] = float4(0,1,1,1);
     if(brokenBondCount == 5) renderTexture[uint2(x,y)] = float4(1,0,1,1);
     if(brokenBondCount == 6) renderTexture[uint2(x,y)] = float4(1,0,0,1);
+
+    // renderTexture[uint2(x,y)] = float4(1,1,1,1);
 }
 
 [numthreads(256, 1, 1)]
