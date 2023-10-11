@@ -42,12 +42,24 @@ float2 ForceFromBond(float2 pos,int bondNodeIndex)
     float2 vec = nodes[bondNodeIndex].position - pos;
     float dist = length(vec);
     float2 direction = vec/dist;
+    // float2 bondPos = (nodes[bondNodeIndex].position + pos)/2.0;
+    // float2 directionToCenter = float2(DIM_X/2.0,DIM_Y/2.0) - bondPos;
+    // directionToCenter = directionToCenter/length(directionToCenter);
+    // float absDotProduct = abs(directionToCenter.x * direction.x + directionToCenter.y * direction.y);
+    // return (1.0 - absDotProduct) * K * (dist - L) * direction;
+    return K * (dist - L) * direction;
+}
+float BondCritCoeff(float2 pos,int bondNodeIndex)
+{
+    if(bondNodeIndex < 0) return 1;
+    float2 vec = nodes[bondNodeIndex].position - pos;
+    float dist = length(vec);
+    float2 direction = vec/dist;
     float2 bondPos = (nodes[bondNodeIndex].position + pos)/2.0;
     float2 directionToCenter = float2(DIM_X/2.0,DIM_Y/2.0) - bondPos;
     directionToCenter = directionToCenter/length(directionToCenter);
     float absDotProduct = abs(directionToCenter.x * direction.x + directionToCenter.y * direction.y);
-    return (1.0 - absDotProduct) * K * (dist - L) * direction;
-    // return K * (dist - L) * direction;
+    return (absDotProduct + 1)*0.5;
 }
 
 float2 Force(uint nodeIndex,float2 tmpPos,float2 tmpVel)
@@ -74,6 +86,19 @@ void MarkBondsToBreak(uint nodeIndex)
 
     if(length(ForceFromBond(pos,nodes[nodeIndex].bond3)) > bondCrit) nodes[nodeIndex].breakbond3 = true;
     else nodes[nodeIndex].breakbond3 = false;
+
+
+    // if(length(ForceFromBond(pos,nodes[nodeIndex].bond0)) > bondCrit*BondCritCoeff(pos,nodes[nodeIndex].bond0)) nodes[nodeIndex].breakbond0 = true;
+    // else nodes[nodeIndex].breakbond0 = false;
+
+    // if(length(ForceFromBond(pos,nodes[nodeIndex].bond1)) > bondCrit*BondCritCoeff(pos,nodes[nodeIndex].bond1)) nodes[nodeIndex].breakbond1 = true;
+    // else nodes[nodeIndex].breakbond1 = false;
+
+    // if(length(ForceFromBond(pos,nodes[nodeIndex].bond2)) > bondCrit*BondCritCoeff(pos,nodes[nodeIndex].bond2)) nodes[nodeIndex].breakbond2 = true;
+    // else nodes[nodeIndex].breakbond2 = false;
+
+    // if(length(ForceFromBond(pos,nodes[nodeIndex].bond3)) > bondCrit*BondCritCoeff(pos,nodes[nodeIndex].bond3)) nodes[nodeIndex].breakbond3 = true;
+    // else nodes[nodeIndex].breakbond3 = false;
 }
 
 uint Hash(uint s)

@@ -178,7 +178,7 @@ MonoBehaviour:
   L: 0
   K: 10
   bondCrit: 100
-  slipCrit: 100
+  slipCrit: 1
   randomOffset: 1
   compute: {fileID: 7200000, guid: 9bd62212522224e4cba6a7f468ddb28d, type: 3}
 --- !u!1 &94686187
