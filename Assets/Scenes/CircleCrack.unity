@@ -244,10 +244,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4248d41e6bbfe654f9c01f3524712c1a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  setL: 1
+  setL: 1.8
   setK: 10
-  setFcb: 39
-  setFcs: 5
+  setFcb: 13
+  setFcs: 1
   nodePrefab: {fileID: 9101714565389931845, guid: 5f6fd46233dbab84589f0e46dd5430cf, type: 3}
   bondRendererPrefab: {fileID: 1451822435840293193, guid: 8530a84adec68394492d97b9b4eb822c, type: 3}
   radius: 20

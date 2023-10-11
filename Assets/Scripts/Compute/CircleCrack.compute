@@ -1,0 +1,268 @@
+#pragma kernel Init
+#pragma kernel Plot
+#pragma kernel Erase
+#pragma kernel RandomMovement
+#pragma kernel StepTmp
+#pragma kernel Step
+#pragma kernel BreakBonds
+
+struct Node
+{
+    bool fix;
+    bool breakbond0;
+    int bond0;
+    bool breakbond1;
+    int bond1;
+    bool breakbond2;
+    int bond2;
+    bool breakbond3;
+    int bond3;
+    bool breakbond4;
+    int bond4;
+    bool breakbond5;
+    int bond5;
+    float2 position;
+    float2 positionTmp;
+    float2 velocity;
+    float2 velocityTmp;
+};
+RWStructuredBuffer<Node> nodes;
+RWTexture2D<float4> renderTexture;
+float D,L,K;
+float bondCrit;
+float slipCrit;
+uint DIM_X;
+uint DIM_Y;
+uint nodeCount;
+uint nodeInterval;
+uint offset;
+uint radius;
+
+float2 ForceFromBond(float2 pos,int bondNodeIndex)
+{
+    if(bondNodeIndex < 0) return float2(0,0);
+    float2 vec = nodes[bondNodeIndex].position - pos;
+    float dist = length(vec);
+    float2 direction = vec/dist;
+    return K * (dist - L) * direction;
+}
+
+float2 Force(uint nodeIndex,float2 tmpPos,float2 tmpVel)
+{
+    float2 force = float2(0,0);
+    Node node = nodes[nodeIndex];
+    force += ForceFromBond(tmpPos,node.bond0);
+    force += ForceFromBond(tmpPos,node.bond1);
+    force += ForceFromBond(tmpPos,node.bond2);
+    force += ForceFromBond(tmpPos,node.bond3);
+    force += ForceFromBond(tmpPos,node.bond4);
+    force += ForceFromBond(tmpPos,node.bond5);
+    return force - D*tmpVel;
+}
+void MarkBondsToBreak(uint nodeIndex)
+{
+    float2 pos = nodes[nodeIndex].position;
+    if(length(ForceFromBond(pos,nodes[nodeIndex].bond0)) > bondCrit) nodes[nodeIndex].breakbond0 = true;
+    else nodes[nodeIndex].breakbond0 = false;
+
+    if(length(ForceFromBond(pos,nodes[nodeIndex].bond1)) > bondCrit) nodes[nodeIndex].breakbond1 = true;
+    else nodes[nodeIndex].breakbond1 = false;
+
+    if(length(ForceFromBond(pos,nodes[nodeIndex].bond2)) > bondCrit) nodes[nodeIndex].breakbond2 = true;
+    else nodes[nodeIndex].breakbond2 = false;
+
+    if(length(ForceFromBond(pos,nodes[nodeIndex].bond3)) > bondCrit) nodes[nodeIndex].breakbond3 = true;
+    else nodes[nodeIndex].breakbond3 = false;
+
+    if(length(ForceFromBond(pos,nodes[nodeIndex].bond4)) > bondCrit) nodes[nodeIndex].breakbond4 = true;
+    else nodes[nodeIndex].breakbond4 = false;
+
+    if(length(ForceFromBond(pos,nodes[nodeIndex].bond5)) > bondCrit) nodes[nodeIndex].breakbond5 = true;
+    else nodes[nodeIndex].breakbond5 = false;
+}
+
+uint Hash(uint s)
+{
+    s ^= 2747636419u;
+    s *= 2654435769u;
+    s ^= s >> 16;
+    s *= 2654435769u;
+    s ^= s >> 16;
+    s *= 2654435769u;
+    return s;
+}
+
+float Random(uint seed)
+{
+    return float(Hash(seed)) / 4294967295.0; // 2^32-1
+}
+
+[numthreads(1, 1, 1)]
+void Init(uint3 id : SV_DispatchThreadID)
+{
+    float pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164;
+    uint index = 0;
+    uint r,i;
+    for (r = 0; r < radius; r++)
+    {
+        if (r == 0)
+        {
+            nodes[index].position = float2(DIM_X / 2, DIM_Y / 2);
+            index++;
+            continue;
+        }
+        for (i = 0; i < r * 6; i++)
+        {
+            float theta = (i * pi) / (3.0 * r);
+            nodes[index].position = float2(DIM_X / 2, DIM_Y / 2) + float2(cos(theta), sin(theta)) * r * nodeInterval;
+            if (i != 0)
+            {
+                nodes[index].bond0 = index - 1;
+                nodes[index - 1].bond1 = index;
+            }
+            if (i == r * 6 - 1)
+            {
+                nodes[index].bond1 = index - (r * 6 - 1);
+                nodes[index - (r * 6 - 1)].bond0 = index;
+            }
+            if (r == 1)
+            {
+                nodes[index].bond2 = 0;
+                if(i == 0) nodes[0].bond0 = index;
+                if(i == 1) nodes[0].bond1 = index;
+                if(i == 2) nodes[0].bond2 = index;
+                if(i == 3) nodes[0].bond3 = index;
+                if(i == 4) nodes[0].bond4 = index;
+                if(i == 5) nodes[0].bond5 = index;
+            }
+            if (r > 1)
+            {
+                int lastFirst = index - i - (r - 1) * 6;
+                int newIndex = i - ((i - 1) / r + 1);
+                if (i == 0) newIndex = 0;
+                
+                
+                nodes[index].bond2 = lastFirst + newIndex;
+                if (i % r != 0)
+                {
+                    nodes[lastFirst + newIndex].bond3 = index;
+                    if (i == r * 6 - 1)
+                    {
+                        nodes[index].bond4 = (lastFirst + newIndex + 1) - (r - 1) * 6;
+                        nodes[(lastFirst + newIndex + 1) - (r - 1) * 6].bond5 = index;
+                    }
+                    else 
+                    {
+                        nodes[index].bond4 = lastFirst + newIndex + 1;
+                        nodes[lastFirst + newIndex + 1].bond5 = index;
+                    }
+                }
+                else nodes[lastFirst + newIndex].bond4 = index;
+            }
+            if (r == radius - 1) nodes[index].fix = true;
+            index++;
+        }
+    }
+}
+
+[numthreads(16, 16, 1)]
+void Erase(uint3 id : SV_DispatchThreadID)
+{
+    renderTexture[id.xy] = float4(0,0,0,1);
+}
+
+[numthreads(256, 1, 1)]
+void Plot(uint3 id : SV_DispatchThreadID)
+{
+    if(id.x >= nodeCount) return;
+    uint index = id.x;
+    float x = nodes[index].position.x;
+    float y = nodes[index].position.y;
+    float dimx = float(DIM_X);
+    float dimy = float(DIM_Y);
+    if(x < 0 || x >= dimx || y < 0 || y >= dimy) return;
+    int brokenBondCount = 0;
+    if(nodes[index].bond0 < 0) brokenBondCount++;
+    if(nodes[index].bond1 < 0) brokenBondCount++;
+    if(nodes[index].bond2 < 0) brokenBondCount++;
+    if(nodes[index].bond3 < 0) brokenBondCount++;
+    if(nodes[index].bond4 < 0) brokenBondCount++;
+    if(nodes[index].bond5 < 0) brokenBondCount++;
+
+    if(brokenBondCount == 0) renderTexture[uint2(x,y)] = float4(1,1,1,1);
+    if(brokenBondCount == 1) renderTexture[uint2(x,y)] = float4(0,0,1,1);
+    if(brokenBondCount == 2) renderTexture[uint2(x,y)] = float4(0,1,0,1);
+    if(brokenBondCount == 3) renderTexture[uint2(x,y)] = float4(1,1,0,1);
+    if(brokenBondCount == 4) renderTexture[uint2(x,y)] = float4(0,1,1,1);
+    if(brokenBondCount == 5) renderTexture[uint2(x,y)] = float4(1,0,1,1);
+    if(brokenBondCount == 6) renderTexture[uint2(x,y)] = float4(1,0,0,1);
+}
+
+[numthreads(256, 1, 1)]
+void StepTmp(uint3 id : SV_DispatchThreadID)
+{
+    if(id.x >= nodeCount) return;
+    uint index = id.x;
+    MarkBondsToBreak(index);
+    float dt = 0.02;
+    float2 vel = nodes[index].velocity;
+    float2 pos = nodes[index].position;
+    float2 force = Force(index,pos,vel);
+    if (nodes[index].fix || length(force) <= slipCrit)
+    {
+        nodes[index].velocityTmp = float2(0,0);
+        nodes[index].positionTmp = nodes[index].position;
+        return;
+    }
+    
+    float2 k1v = force * dt;
+    float2 k1x = vel * dt;
+
+    float2 k2v = Force(index,pos + k1x / 2.0,vel + k1v / 2.0) * dt;
+    float2 k2x = (vel + k1v / 2.0) * dt;
+
+    float2 k3v = Force(index,pos + k2x / 2.0,vel + k2v / 2.0) * dt;
+    float2 k3x = (vel + k2v / 2.0) * dt;
+
+    float2 k4v = Force(index,pos + k3x,vel + k3v) * dt;
+    float2 k4x = (vel + k3v) * dt;
+
+    nodes[index].velocityTmp = vel + (k1v + 2.0 * k2v + 2.0 * k3v + k4v) / 6.0;
+    nodes[index].positionTmp = pos + (k1x + 2.0 * k2x + 2.0 * k3x + k4x) / 6.0;
+}
+
+[numthreads(256, 1, 1)]
+void Step(uint3 id : SV_DispatchThreadID)
+{
+    if(id.x >= nodeCount) return;
+    uint index = id.x;
+    nodes[index].velocity = nodes[index].velocityTmp;
+    nodes[index].position = nodes[index].positionTmp;
+}
+
+[numthreads(256, 1, 1)]
+void BreakBonds(uint3 id : SV_DispatchThreadID)
+{
+    if(id.x >= nodeCount) return;
+    uint index = id.x;
+    if(nodes[index].breakbond0) nodes[index].bond0 = -1;
+    if(nodes[index].breakbond1) nodes[index].bond1 = -1;
+    if(nodes[index].breakbond2) nodes[index].bond2 = -1;
+    if(nodes[index].breakbond3) nodes[index].bond3 = -1;
+    if(nodes[index].breakbond4) nodes[index].bond4 = -1;
+    if(nodes[index].breakbond5) nodes[index].bond5 = -1;
+}
+
+[numthreads(256, 1, 1)]
+void RandomMovement(uint3 id : SV_DispatchThreadID)
+{
+    if(id.x >= nodeCount) return;
+    uint index = id.x;
+    float pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164;
+    float rng = Random(index*offset + offset);
+    float theta = 2.0 * pi * rng;
+    float cs = cos(theta);
+    float sn = sin(theta);
+    nodes[index].velocity += 0.5 * float2(cs,sn) * 0.02 - D * nodes[index].velocity;
+    nodes[index].position += nodes[index].velocity * 0.02;
+}
