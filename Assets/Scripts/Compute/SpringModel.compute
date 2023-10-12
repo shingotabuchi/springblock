@@ -5,6 +5,7 @@
 #pragma kernel StepTmp
 #pragma kernel Step
 #pragma kernel BreakBonds
+#pragma kernel GetCrackEdge
 
 struct Node
 {
@@ -23,6 +24,7 @@ struct Node
     float2 velocityTmp;
 };
 RWStructuredBuffer<Node> nodes;
+RWStructuredBuffer<float> crackLength;
 RWTexture2D<float4> renderTexture;
 float D,L,K;
 float bondCrit;
@@ -121,6 +123,24 @@ void Init(uint3 id : SV_DispatchThreadID)
 void Erase(uint3 id : SV_DispatchThreadID)
 {
     renderTexture[id.xy] = float4(0,0,0,1);
+}
+
+[numthreads(1, 1, 1)]
+void GetCrackEdge(uint3 id : SV_DispatchThreadID)
+{
+    uint nodeCount = columnCount * rowCount;
+    uint i;
+    crackLength[0] = -1;
+    for(i = 0; i < nodeCount; i++)
+    {
+        if(nodes[i].fix) continue;
+        int brokenBondCount = 0;
+        if(nodes[i].bond0 < 0) brokenBondCount++;
+        if(nodes[i].bond1 < 0) brokenBondCount++;
+        if(nodes[i].bond2 < 0) brokenBondCount++;
+        if(nodes[i].bond3 < 0) brokenBondCount++;
+        if(brokenBondCount>0 && nodes[i].position.y > crackLength[0]) crackLength[0] = nodes[i].position.y;
+    }
 }
 
 [numthreads(16, 16, 1)]

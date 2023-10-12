@@ -275,12 +275,12 @@ MonoBehaviour:
   rowCount: 512
   columnCount: 512
   nodeInterval: 1
-  loopCount: 1
-  D: 1
+  loopCount: 100
+  D: 100
   L: 0.5
   K: 10
   bondCrit: 6.9
-  slipCrit: 0.7
+  slipCrit: 0.67
   compute: {fileID: 7200000, guid: 3763c457856f1524ca557dae5c64fd6c, type: 3}
 --- !u!1 &1018932639
 GameObject:

@@ -1,3 +1,4 @@
+using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -34,14 +35,19 @@ public class SpringModelMain : MonoBehaviour
     Texture2D plotTexture;
     RenderTexture renderTexture;
     ComputeBuffer nodes;
-    int Init, Plot, RandomMovement, Erase, StepTmp, Step, BreakBonds;
+    ComputeBuffer crackLength;
+    int Init, Plot, RandomMovement, Erase, StepTmp, Step, BreakBonds, GetCrackEdge;
     public ComputeShader compute;
     int[] threadsPlot;
     int[] threadsNodes;
     ComputeNode[] debugNodes;
+    float[] crackLengthBuffer;
+    string deets = "";
     void OnDestroy()
     {
         nodes.Dispose();
+        crackLength.Dispose();
+        File.WriteAllText("deets.txt", deets);
     }
     private void OnValidate()
     {
@@ -82,7 +88,11 @@ public class SpringModelMain : MonoBehaviour
 
         nodes = new ComputeBuffer(columnCount * rowCount, Marshal.SizeOf(typeof(ComputeNode)));
         debugNodes = new ComputeNode[columnCount * rowCount];
-
+        crackLength = new ComputeBuffer(10, Marshal.SizeOf(typeof(float)));
+        crackLengthBuffer = new float[10];
+        GetCrackEdge = compute.FindKernel("GetCrackEdge");
+        compute.SetBuffer(GetCrackEdge, "crackLength", crackLength);
+        compute.SetBuffer(GetCrackEdge, "nodes", nodes);
 
         Init = compute.FindKernel("Init");
         compute.SetBuffer(Init, "nodes", nodes);
@@ -133,5 +143,10 @@ public class SpringModelMain : MonoBehaviour
         RenderTexture.active = renderTexture;
         plotTexture.ReadPixels(new Rect(0, 0, renderTexture.width, renderTexture.height), 0, 0);
         plotTexture.Apply();
+
+        compute.Dispatch(GetCrackEdge, 1, 1, 1);
+        crackLength.GetData(crackLengthBuffer);
+        print(crackLengthBuffer[0]);
+        deets += crackLengthBuffer[0].ToString("0.00000") + "\n";
     }
 }
