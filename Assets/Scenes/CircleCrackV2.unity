@@ -170,13 +170,13 @@ MonoBehaviour:
   plotImage: {fileID: 1176279916}
   DIM_X: 512
   DIM_Y: 512
-  radius: 100
+  radius: 200
   edgeNodeInterval: 1
   ringInterval: 0.5
   loopCount: 10
-  D: 1
+  D: 5
   L: 0
-  K: 10
+  K: 15
   bondCrit: 100
   slipCrit: 1
   randomOffset: 1

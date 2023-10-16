@@ -276,7 +276,7 @@ MonoBehaviour:
   columnCount: 512
   nodeInterval: 1
   loopCount: 100
-  D: 100
+  D: 1.25
   L: 0.5
   K: 10
   bondCrit: 6.9
